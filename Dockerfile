@@ -1,4 +1,4 @@
-FROM traefik:1.6-alpine
+FROM traefik:alpine
 
 LABEL maintainer="Stephan Müller"
 
