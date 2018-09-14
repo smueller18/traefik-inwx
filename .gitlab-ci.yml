@@ -1,0 +1,31 @@
+variables:
+  IMAGE: ${CI_REGISTRY}/${CI_PROJECT_PATH}
+
+services:
+- docker:dind
+
+deploy:
+  stage: deploy
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build --pull -t "$IMAGE" $CI_PROJECT_DIR
+    - docker push "$IMAGE"
+  only:
+    - master
+
+trigger:
+  stage: deploy
+  script:
+    - docker pull traefik:alpine
+    - docker pull smueller18/$CI_PROJECT_NAME
+    - export VERSION_OFFICIAL=`docker run --rm traefik:alpine version | head -1`
+    - export VERSION_SMUELLER18=`docker run --rm smueller18/$CI_PROJECT_NAME version | head -1`
+    - >
+        if [ "$VERSION_OFFICIAL" != "$VERSION_SMUELLER18" ]; then
+            apk --no-cache add curl
+            curl -sS -H "Content-Type: application/json" --data '{"docker_tag": "latest"}' \
+                 -X POST https://registry.hub.docker.com/u/smueller18/$CI_PROJECT_NAME/trigger/$DOCKERHUB_TRIGGER_TOKEN/
+        fi
+  only:
+    variables:
+      - $DOCKERHUB_TRIGGER_TOKEN
